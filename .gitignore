@@ -1,0 +1,45 @@
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Database (To prevent committing inspection logs)
+*.db
+*.sqlite3
+
+# Large Model Weights & Data (Models, Datasets, Images)
+a_model_download/
+*.pt
+*.onnx
+dataset/
+data/
+sample_images/
+**/sample_images/
+**/PCB.yolov8/
+**/PCB.yolov8.zip
+*.zip
+*.7z
+*.tar.gz
+*.rar
+*.mp4
+*.avi
+*.mov
+
+# Output and Logs
+logs/
+runs/
+wandb/
+*.log
+*.pdf

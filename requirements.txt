@@ -1,0 +1,11 @@
+ultralytics
+git+https://github.com/facebookresearch/segment-anything-2.git
+streamlit
+opencv-python-headless
+torch
+torchvision
+sahi
+reportlab
+pandas
+numpy
+Pillow
