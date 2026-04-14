@@ -1,17 +1,17 @@
 import streamlit as st
-from PIL import Image
 import numpy as np
 import cv2
 import tempfile
 import os
-from inference_engine import PCBInferenceEngine
+import httpx
+import base64
+from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 # ----------------- Configuration & Styling -----------------
 st.set_page_config(page_title="InspectAid - AOI System", page_icon="🔬", layout="wide", initial_sidebar_state="expanded")
 
-# Premium Dynamic Dark Mode UI Styling
 st.markdown("""
 <style>
     :root {
@@ -28,7 +28,6 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* Elegant Title */
     .premium-title {
         background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         -webkit-background-clip: text;
@@ -49,11 +48,9 @@ st.markdown("""
         padding-bottom: 20px;
     }
     
-    /* Glassmorphism Metric Cards */
     .metric-card {
         background: rgba(21, 27, 41, 0.7);
         backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 16px;
         padding: 24px;
@@ -85,26 +82,6 @@ st.markdown("""
     .metric-value.danger { color: #f43f5e; }
     .metric-value.success { color: #10b981; }
     
-    /* Custom Button */
-    .stButton>button {
-        background: linear-gradient(90deg, #3a7bd5 0%, #00d2ff 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1.1rem;
-        transition: all 0.3s ease;
-        width: 100%;
-        box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
-    }
-    
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 210, 255, 0.5);
-    }
-    
-    /* Image Boxes */
     .image-container {
         border-radius: 16px;
         overflow: hidden;
@@ -119,35 +96,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='premium-title'>InspectAid</h1>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Next-Gen Automated Optical Inspection with YOLO26-S & SAM 2</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Next-Gen Automated Optical Inspection Phase 2</div>", unsafe_allow_html=True)
 
-# ----------------- Engine Setup -----------------
-@st.cache_resource
-def load_engine():
-    # Looks inside the new folder for the YOLO weights
-    return PCBInferenceEngine(yolo_weights_path=r"a_model_download\best.pt")
+API_URL = "http://localhost:8000/analyze"
 
-engine = load_engine()
+# ----------------- Sidebar Data Input -----------------
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2835/2835560.png", width=60)
+st.sidebar.markdown("### 🎛️ Operator Traceability")
+operator_id = st.sidebar.text_input("Operator ID", "OP-001")
+serial_number = st.sidebar.text_input("Board Serial Number", "SN-987654321")
 
-# ----------------- Sidebar & Data Input -----------------
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2835/2835560.png", width=60) # Placeholder futuristic icon
 st.sidebar.markdown("### 🎛️ Inspection Controls")
-
-# Mode Selection
 input_mode = st.sidebar.radio("Input Source", ["Test with Sample Images", "Upload Diagnostics Scan"])
 
 image_path_to_process = None
 
 if input_mode == "Test with Sample Images":
-    st.sidebar.info("Quickly test the system without uploading real logs.")
     sample_images_dir = "sample_images"
-    
     if os.path.exists(sample_images_dir) and os.listdir(sample_images_dir):
         samples = [f for f in os.listdir(sample_images_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
         selected_sample = st.sidebar.selectbox("Select Benchmark Scan", samples)
         image_path_to_process = os.path.join(sample_images_dir, selected_sample)
-    else:
-        st.sidebar.warning("⚠️ 'sample_images' folder is empty or missing. Please drop a few .jpg files in there to use this feature!")
 else:
     uploaded_file = st.sidebar.file_uploader("Upload Raw PCB Scan (.jpg, .png)", type=["jpg", "jpeg", "png"])
     if uploaded_file is not None:
@@ -155,10 +124,6 @@ else:
         tfile.write(uploaded_file.read())
         image_path_to_process = tfile.name
 
-st.sidebar.markdown("---")
-confidence_threshold = st.sidebar.slider("Detection Confidence", 0.1, 1.0, 0.3)
-
-# PDF Generation Function
 def create_pdf_report(image, overlay, boxes, output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
     width, height = letter
@@ -166,13 +131,14 @@ def create_pdf_report(image, overlay, boxes, output_path):
     c.drawString(50, height - 50, "InspectAid: Quality Audit Report")
     c.setFont("Helvetica", 12)
     c.drawString(50, height - 80, f"Total Defects Found: {len(boxes)}")
+    c.drawString(50, height - 100, f"Operator: {operator_id} | SN: {serial_number}")
     
     temp_img = "temp_overlay.jpg"
     cv2.imwrite(temp_img, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-    c.drawImage(temp_img, 50, height - 400, width=500, height=300, preserveAspectRatio=True)
+    c.drawImage(temp_img, 50, height - 420, width=500, height=300, preserveAspectRatio=True)
     os.remove(temp_img)
     
-    y = height - 430
+    y = height - 450
     c.drawString(50, y, "Defect Details & Assessment:")
     y -= 25
     for idx, det in enumerate(boxes):
@@ -184,7 +150,6 @@ def create_pdf_report(image, overlay, boxes, output_path):
         y -= 20
     c.save()
 
-# ----------------- Main View -----------------
 if image_path_to_process:
     image = Image.open(image_path_to_process).convert("RGB")
     image_np = np.array(image)
@@ -198,15 +163,41 @@ if image_path_to_process:
         st.markdown("</div>", unsafe_allow_html=True)
         
     if st.sidebar.button("🚀 Run AI Analysis", use_container_width=True):
-        with st.spinner("Neural Processing Active (YOLO26-S & SAM 2)..."):
+        with st.spinner("Neural Processing Active (Communicating with FastAPI Engine)..."):
             try:
-                # Assuming engine accepts confidence changes or processes it inside
-                overlay, boxes, masks = engine.process_image(image_path_to_process)
-                overlay_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
+                files = {'file': open(image_path_to_process, 'rb')}
+                data = {'operator_id': operator_id, 'serial_number': serial_number}
+                
+                response = httpx.post(API_URL, files=files, data=data, timeout=60.0)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    overlay_bytes = base64.b64decode(result['overlay_b64'])
+                    heatmap_bytes = base64.b64decode(result['heatmap_b64'])
+                    boxes = result['boxes']
+                    status = result.get('status', 'FAIL')
+                    
+                    overlay_np = np.frombuffer(overlay_bytes, dtype=np.uint8)
+                    overlay_img = cv2.imdecode(overlay_np, cv2.IMREAD_COLOR)
+                    overlay_rgb = cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB)
+                    
+                    heatmap_np = np.frombuffer(heatmap_bytes, dtype=np.uint8)
+                    heatmap_img = cv2.imdecode(heatmap_np, cv2.IMREAD_COLOR)
+                    heatmap_rgb = cv2.cvtColor(heatmap_img, cv2.COLOR_BGR2RGB)
+                    
+                else:
+                    st.error(f"API Error: {response.text}")
+                    overlay_rgb = image_np
+                    heatmap_rgb = image_np
+                    boxes = []
+                    status = "FAIL"
             except Exception as e:
-                st.error(f"Analysis Pipeline Error: {e}")
+                st.error(f"Connection Error: Is the FastAPI server running on port 8000? {e}")
                 overlay_rgb = image_np
+                heatmap_rgb = image_np
                 boxes = []
+                status = "FAIL"
                 
         with col2:
             st.markdown("### 🎯 Intelligent Detection Map")
@@ -216,9 +207,9 @@ if image_path_to_process:
             
         st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # ----------------- Analytics Dashboard -----------------
+        # ----------------- Analytics & XAI Dashboard -----------------
+        st.markdown("### 📊 Metrics & Traceability")
         critical_count = sum(1 for b in boxes if b.get('class_name') in ['Short', 'Mouse_bite'])
-        status = "FAIL" if len(boxes) > 0 else "PASS"
         status_class = "danger" if status == "FAIL" else "success"
         
         m_col1, m_col2, m_col3 = st.columns(3)
@@ -229,6 +220,14 @@ if image_path_to_process:
         with m_col3:
             st.markdown(f"<div class='metric-card'><div class='metric-title'>Production Status</div><div class='metric-value {status_class}'>{status}</div></div>", unsafe_allow_html=True)
             
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        
+        st.markdown("### 🧠 Explainable AI (XAI) GradCAM Heatmap")
+        st.markdown("<p style='color: #64748b;'>Visualizing the neural activation map to understand the AI's internal attention areas.</p>", unsafe_allow_html=True)
+        st.markdown("<div class='image-container' style='max-width: 600px; margin: 0 auto;'>", unsafe_allow_html=True)
+        st.image(heatmap_rgb, use_column_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+            
         # PDF Generation
         report_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
         create_pdf_report(image_np, overlay_rgb, boxes, report_path)
@@ -238,15 +237,14 @@ if image_path_to_process:
             st.download_button(
                 label="📄 Download Official QA Audit Report",
                 data=pdf_file,
-                file_name="InspectAid_QA_Audit.pdf",
+                file_name=f"InspectAid_QA_{serial_number}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
 else:
-    # Beautiful landing state
-    st.markdown("""
+    st.markdown('''
     <div style='text-align: center; padding: 100px 20px; background: rgba(21, 27, 41, 0.4); border-radius: 20px; border: 1px dashed #3a7bd5; margin-top: 20px;'>
         <h2 style='color: #94a3b8;'>System Ready for Inspection</h2>
         <p style='color: #64748b; font-size: 1.1rem; max-width: 600px; margin: 0 auto;'>Select a sample benchmark image from the sidebar or upload a fresh High-Resolution PCB scan to initiate the Automated Optical Inspection pipeline.</p>
     </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)

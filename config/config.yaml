@@ -1,0 +1,8 @@
+model:
+  yolo_weights: "a_model_download/best.pt"
+  confidence_threshold: 0.3
+database:
+  db_path: "src/db/industrial_pcb.db"
+api:
+  host: "0.0.0.0"
+  port: 8000

@@ -7,10 +7,14 @@
 - [x] Delivered a premium Streamlit UI (`app.py`) with PDF generation.
 
 ## 🚀 Phase 2: Production-Grade Refactoring 
-- [ ] **Folder Structure:** Restructure flat files into a standard Python backend architecture (e.g., `/src`, `/api`, `/ui`, `/config`, `/models`).
-- [ ] **Decoupling:** Separate Streamlit (Frontend) from Inference (Backend) using **FastAPI**.
-- [ ] **Logging & Config:** Implement a centralized `.yaml` config file and proper `logging` instead of python `print()` statements.
-- [ ] **Error Handling:** Add robust try-except blocks and Pydantic validation for the pipeline.
+## 🚀 Phase 2: Production-Grade Refactoring & Innovation
+- [x] **Environment:** Automated Virtual Environment setup (`setup_venv.bat`).
+- [ ] **Module 2: Training Pipeline:** Robustify Colab notebook with CONFIG blocks and dataset toggles.
+- [ ] **Module 3: Architecture:** Migrate to professional folder structure (`/src/api`, `/src/core`, etc.).
+- [ ] **Module 3: FastAPI:** Implement Asynchronous Backend for SAM 2 / YOLO decoupling.
+- [ ] **Module 4: Traceability:** Implement SQLite logging (Inspections table).
+- [ ] **Module 5: XAI:** Integrate Explainable AI (GradCAM heatmaps).
+- [ ] **Module 6: UI Refinement:** Add "Operator Login" and "Serial Number" simulated inputs.
 
 ## 🌍 Phase 3: Deployment & Dockerization
 - [ ] **Dockerization:** Create a `Dockerfile` and `docker-compose.yml` to containerize the FastAPI backend and Streamlit frontend.

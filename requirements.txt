@@ -9,3 +9,9 @@ reportlab
 pandas
 numpy
 Pillow
+fastapi
+uvicorn
+httpx
+pyyaml
+grad-cam
+python-multipart

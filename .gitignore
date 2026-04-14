@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 venv/
 env/
 .env
@@ -14,6 +15,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Database (To prevent committing inspection logs)
 *.db
@@ -23,6 +25,9 @@ Thumbs.db
 a_model_download/
 *.pt
 *.onnx
+*.engine
+*.bin
+*.model
 dataset/
 data/
 sample_images/
@@ -43,3 +48,5 @@ runs/
 wandb/
 *.log
 *.pdf
+temp_*.jpg
+temp_*.png
